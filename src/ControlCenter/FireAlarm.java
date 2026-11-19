@@ -15,6 +15,7 @@ public class FireAlarm {
         this.bus = bus;
         this.id = bus.register();
         active = false;
+        bus.subscribe(id, Topics.FIRE, 0);
     }
 
     public void activateFire() {
@@ -25,6 +26,17 @@ public class FireAlarm {
     public void resetFire() {
         active = false;
         publishFireStatus();
+    }
+
+    // receives fire alarm status from other components
+    public void pollFireStatus() {
+        Message message;
+        while ((message = bus.getMsg(id, Topics.FIRE, 0)) != null) {
+            int[] body = message.body();
+            if (body.length > 0) {
+                active = body[0] != 0;
+            }
+        }
     }
 
     public boolean isFireActive() {

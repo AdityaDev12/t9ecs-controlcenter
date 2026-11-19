@@ -16,6 +16,9 @@ public class FloorPanels {
         this.id = bus.register();
 
         pendingRequests = new HashSet<>();
+        for (int floor = 1; floor <= Manager.NUM_FLOORS; floor++) {
+            bus.subscribe(id, Topics.REQUEST, floor);
+        }
     }
 
     //records and publishes a floor request
@@ -42,6 +45,27 @@ public class FloorPanels {
     //removes a pending request
     public void cancelRequest(int floor, Direction direction) {
         pendingRequests.remove(floor + " " + direction);
+    }
+
+    // receive up/down requests from hall panels
+    public void pollRequests() {
+        for (int floor = 1; floor <= Manager.NUM_FLOORS; floor++) {
+            Message message;
+            while ((message = bus.getMsg(id, Topics.REQUEST, floor)) != null) {
+                int[] body = message.body();
+                if (body.length >0) {
+                    Direction direction = null;
+                    if (body[0] == 1) {
+                        direction = Direction.UP;
+                    } else if (body[0] == 2) {
+                        direction = Direction.DOWN;
+                    }
+                    if (direction != null) {
+                        pendingRequests.add(floor + " " + direction);
+                    }
+                }
+            }
+        }
     }
 
     //checks whether there are pending requests
