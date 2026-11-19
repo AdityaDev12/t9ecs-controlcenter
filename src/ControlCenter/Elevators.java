@@ -84,6 +84,8 @@ public class Elevators {
         if (!pendingStops[elevator].add(floor)) {
             return;
         }
+        // DEBUG PRINT
+        System.out.println("Elevator " + elevator + ": Added floor " + floor + " to its route.");
         // if elevator is idle, move toward destination
         if (direction[elevator] == Direction.STOPPED) {
             dispatchNextStop(elevator);
@@ -163,6 +165,11 @@ public class Elevators {
             } else if (next < current) {
                 direction[elevator] = Direction.DOWN;
             }
+            // DEBUG PRINT
+            System.out.println("Elevator " + elevator
+                    + ": Moving " + direction[elevator]
+                    + " from floor " + current
+                    + " to floor " + next);
             publishGoTo(elevator, next);
         }
     }
@@ -193,6 +200,9 @@ public class Elevators {
         int arrivedFloor = currentFloor[elevator];
         // remove floor that elevator just reached
         pendingStops[elevator].remove(arrivedFloor);
+        //DEBUG PRINT
+        System.out.println("Elevator " + elevator
+                + ": Completed stop at floor " + arrivedFloor);
         // publish next destination
         dispatchNextStop(elevator);
     }
@@ -243,6 +253,8 @@ public class Elevators {
         if (floor < 1 || floor > Manager.NUM_FLOORS) return;
 
         currentFloor[elevator] = floor;
+        // DEBUG PRINT
+        System.out.println("Elevator " + elevator + ": Arrived at floor " + floor);
     }
 
     private boolean validElevator(int elevator) {

@@ -134,6 +134,9 @@ public class Manager {
         }
         // open doors if there's a request at this floor
         if (needsService) {
+            //DEBUG PRINT
+            System.out.println("Elevator " + elevator
+                    + ": Servicing floor " + floor);
             elevators.serviceAtFloor(elevator, floor);
         }
         // remove this stop and dispatch next
