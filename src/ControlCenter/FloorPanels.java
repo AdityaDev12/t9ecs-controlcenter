@@ -80,13 +80,24 @@ public class FloorPanels {
 
     //updates floor panel indicator
     public void updateIndicator(int floor, Direction direction, boolean active) {
-
+        if (floor < 1 || floor > Manager.NUM_FLOORS) {
+            return;
+        }
+        if (direction == Direction.STOPPED) {
+            return;
+        }
         String request = floor + " " + direction;
 
         if (active) {
-            requestElevator(floor, direction);
+            pendingRequests.add(request);
         } else {
             pendingRequests.remove(request);
+            int directionValue = direction == Direction.UP ? 1 : 2;
+            Message message = new Message (
+                    Topics.CLEAR_BUTTON,
+                    floor, new int[]{directionValue}
+            );
+            bus.publish(id, message);
         }
     }
 }
