@@ -42,7 +42,7 @@ public class BusCommands {
                     // publish <bus #> <client #> <topic> <subtopic> <body>
                     case "publish" -> {
                         buses.get(Integer.parseInt(split[1])).publish(testClients.get(Integer.parseInt(split[2])).getUuid(),
-                                new Message(Integer.parseInt(split[3]), Integer.parseInt(split[4]), Integer.parseInt(split[5])));
+                                new Message(Integer.parseInt(split[3]), Integer.parseInt(split[4]), new int[]{Integer.parseInt(split[5])}));
                         System.out.println("published on bus " + split[1] + " from client " + split[2] + " for topic " +
                                 split[3] + " and subtopic " + split[4] + " body " + split[5]);
                     }

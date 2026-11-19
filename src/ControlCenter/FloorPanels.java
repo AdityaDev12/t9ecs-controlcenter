@@ -1,6 +1,6 @@
 package ControlCenter;
 
-
+import SoftwareBus.Topics;
 import SoftwareBus.Message;
 import SoftwareBus.SoftwareBus;
 import java.util.*;
@@ -32,7 +32,7 @@ public class FloorPanels {
             Message message = new Message(
                     Topics.REQUEST,
                     floor,
-                    directionValue
+                    new int[]{directionValue}
             );
 
             bus.publish(id, message);

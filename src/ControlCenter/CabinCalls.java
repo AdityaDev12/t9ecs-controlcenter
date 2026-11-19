@@ -1,6 +1,7 @@
 package ControlCenter;
 
 import SoftwareBus.Message;
+import SoftwareBus.Topics;
 import SoftwareBus.SoftwareBus;
 import java.util.*;
 
@@ -33,7 +34,7 @@ public class CabinCalls {
         Message message = new Message(
                 Topics.FLOOR_BUTTON,
                 elevator,
-                floor
+                new int[]{floor}
         );
 
         bus.publish(id, message);
@@ -66,7 +67,7 @@ public class CabinCalls {
         Message message = new Message(
                 Topics.CLEAR_BUTTON,
                 elevator,
-                button
+                new int[]{button}
         );
 
         bus.publish(id, message);

@@ -1,5 +1,6 @@
 package ControlCenter;
 
+import SoftwareBus.Topics;
 import SoftwareBus.Message;
 import SoftwareBus.SoftwareBus;
 import java.util.UUID;
@@ -57,7 +58,7 @@ public class Elevators {
         Message message = new Message(
                 Topics.GO_TO,
                 elevator,
-                floor
+                new int[]{floor}
         );
 
         bus.publish(id, message);

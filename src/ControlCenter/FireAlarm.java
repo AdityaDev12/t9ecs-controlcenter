@@ -1,5 +1,6 @@
 package ControlCenter;
 
+import SoftwareBus.Topics;
 import SoftwareBus.Message;
 import SoftwareBus.SoftwareBus;
 import java.util.UUID;
@@ -34,7 +35,7 @@ public class FireAlarm {
         Message message = new Message(
                 Topics.FIRE,
                 0,
-                active ? 1 : 0
+                new int[]{active ? 1 : 0}
         );
 
         bus.publish(id, message);
