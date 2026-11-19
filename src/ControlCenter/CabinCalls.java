@@ -19,6 +19,7 @@ public class CabinCalls {
         int numberOfElevators = Manager.NUM_ELEVATORS;
         for (int i = 1; i <= numberOfElevators; i++) {
             pendingRequests.put(i, new HashSet<>());
+            bus.subscribe(id, Topics.FLOOR_BUTTON, i);
         }
     }
 
@@ -44,6 +45,22 @@ public class CabinCalls {
     public void cancelRequest(int elevator, int floor) {
         if (pendingRequests.containsKey(elevator)) {
             pendingRequests.get(elevator).remove(floor);
+        }
+    }
+
+    // receive floor button presses from cavin panels
+    public void pollRequests() {
+        for (int elevator = 1; elevator <= Manager.NUM_ELEVATORS; elevator++) {
+            Message message;
+            while ((message = bus.getMsg(id, Topics.FLOOR_BUTTON, elevator)) != null) {
+                int[] body = message.body();
+                if (body.length > 0) {
+                    int floor = body[0];
+                    if (floor >= 1 && floor <= Manager.NUM_FLOORS) {
+                        pendingRequests.get(elevator).add(floor);
+                    }
+                }
+            }
         }
     }
 
