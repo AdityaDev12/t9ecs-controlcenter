@@ -26,10 +26,12 @@ public class Elevators {
         powered = new boolean[numberOfElevators + 1];
 
         for (int i = 1; i <= numberOfElevators; i++) {
+            bus.subscribe(id, Topics.ARRIVED, i);
             currentFloor[i] = 1;
             serviceFloor[i] = 1;
             direction[i] = Direction.STOPPED;
             powered[i] = true;
+            bus.subscribe(id, Topics.ARRIVED, i);
         }
     }
 
@@ -62,6 +64,21 @@ public class Elevators {
         );
 
         bus.publish(id, message);
+    }
+
+    // receive arrival messages from the Elevator Control Board
+    public void pollArrivals() {
+        for (int elevator = 1; elevator <= Manager.NUM_ELEVATORS; elevator++) {
+            Message message;
+            while((message = bus.getMsg(id, Topics.ARRIVED, elevator)) != null) {
+                int[] body = message.body();
+
+                if (body.length > 0) {
+                    int floor = body[0];
+                    updateCurrentFloor(elevator, floor);
+                }
+            }
+        }
     }
 
     public int getCurrentFloor(int elevator) {
