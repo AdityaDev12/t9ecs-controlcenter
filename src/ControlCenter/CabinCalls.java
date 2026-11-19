@@ -1,5 +1,7 @@
 package ControlCenter;
 
+import SoftwareBus.Message;
+import SoftwareBus.SoftwareBus;
 import java.util.*;
 
 public class CabinCalls {
@@ -13,7 +15,7 @@ public class CabinCalls {
         this.id = bus.register();
 
         pendingRequests = new HashMap<>();
-
+        int numberOfElevators = Manager.NUM_ELEVATORS;
         for (int i = 1; i <= numberOfElevators; i++) {
             pendingRequests.put(i, new HashSet<>());
         }
