@@ -66,6 +66,25 @@ public class Elevators {
         bus.publish(id, message);
     }
 
+    // commands elevator to open doors at current floor
+    public void serviceAtFloor(int elevator, int floor) {
+        if (!validElevator(elevator) || !powered[elevator]) {
+            return;
+        }
+        if (floor < 1 || floor > Manager.NUM_FLOORS) {
+            return;
+        }
+        if (currentFloor[elevator] != floor) {
+            return;
+        }
+        Message message = new Message (
+                Topics.SERVICE,
+                elevator,
+                new int[]{floor}
+        );
+        bus.publish(id, message);
+    }
+
     // receive arrival messages from the Elevator Control Board
     public void pollArrivals() {
         for (int elevator = 1; elevator <= Manager.NUM_ELEVATORS; elevator++) {
