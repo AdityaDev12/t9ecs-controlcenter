@@ -3,13 +3,18 @@ package ControlCenter;
 import SoftwareBus.Topics;
 import SoftwareBus.Message;
 import SoftwareBus.SoftwareBus;
+
+import java.util.NavigableSet;
+import java.util.TreeSet;
 import java.util.UUID;
+
 
 public class Elevators {
     private final int[] currentFloor;
     private final int[] serviceFloor;
     private final Direction[] direction;
     private final boolean[] powered;
+    private final NavigableSet<Integer>[] pendingStops;
 
     private final SoftwareBus bus;
     private final UUID id;
@@ -24,6 +29,7 @@ public class Elevators {
         serviceFloor = new int[numberOfElevators + 1];
         direction = new Direction[numberOfElevators + 1];
         powered = new boolean[numberOfElevators + 1];
+        pendingStops = new NavigableSet[numberOfElevators + 1];
 
         for (int i = 1; i <= numberOfElevators; i++) {
             bus.subscribe(id, Topics.ARRIVED, i);
@@ -31,6 +37,7 @@ public class Elevators {
             serviceFloor[i] = 1;
             direction[i] = Direction.STOPPED;
             powered[i] = true;
+            pendingStops[i] = new TreeSet<>();
             bus.subscribe(id, Topics.ARRIVED, i);
         }
     }
@@ -66,6 +73,100 @@ public class Elevators {
         bus.publish(id, message);
     }
 
+    public void addStop(int elevator, int floor) {
+        if (!validElevator(elevator) || !powered[elevator]) {
+            return;
+        }
+        if (floor < 1 || floor > Manager.NUM_FLOORS) {
+            return;
+        }
+        // ignore duplicate requests for existing stop
+        if (!pendingStops[elevator].add(floor)) {
+            return;
+        }
+        // if elevator is idle, move toward destination
+        if (direction[elevator] == Direction.STOPPED) {
+            dispatchNextStop(elevator);
+            return;
+        }
+        // if moving UP, check if new stop is between current floor and destination
+        if (direction[elevator] == Direction.UP
+                && floor > currentFloor[elevator]
+                && floor < serviceFloor[elevator]) {
+            serviceFloor[elevator] = floor;
+            publishGoTo(elevator, floor);
+        }
+        // if moving DOWN, check if new stop is between current floor and destination
+        else if (direction[elevator] == Direction.DOWN
+                && floor < currentFloor[elevator]
+                && floor > serviceFloor[elevator]) {
+            serviceFloor[elevator] = floor;
+            publishGoTo(elevator, floor);
+        }
+    }
+
+    private void publishGoTo(int elevator, int floor) {
+        Message message = new Message(
+                Topics.GO_TO,
+                elevator,
+                new int[]{floor}
+        );
+        bus.publish(id, message);
+    }
+
+    private void dispatchNextStop(int elevator) {
+        if (!validElevator(elevator) || !powered[elevator]) {
+            return;
+        }
+        // no pending stops; elevator is idle
+        if (pendingStops[elevator].isEmpty()) {
+            direction[elevator] = Direction.STOPPED;
+            serviceFloor[elevator] = currentFloor[elevator];
+            return;
+        }
+        int current = currentFloor[elevator];
+        Integer next = null;
+
+        if (direction[elevator] == Direction.UP) {
+            // continue UP if there's requests above current floor
+            next = pendingStops[elevator].higher(current);
+            // reverse and serve highest remaining floor below
+            if (next == null) {
+                next = pendingStops[elevator].lower(current);
+            }
+        } else if (direction[elevator] == Direction.DOWN) {
+            // continue DOWN if there's requests below current floor
+            next = pendingStops[elevator].lower(current);
+            // reverse and serve lowest remaining floor above
+            if (next == null) {
+                next = pendingStops[elevator].higher(current);
+            }
+        } else {
+            // idle elevator; choose closest pending stop
+            Integer above = pendingStops[elevator].higher(current);
+            Integer below = pendingStops[elevator].lower(current);
+            if (above == null) {
+                next = below;
+            } else if (below == null) {
+                next = above;
+            } else {
+                int upDistance = above - current;
+                int downDistance = current - below;
+                next = (upDistance <= downDistance) ? above : below;
+            }
+        }
+        if (next != null) {
+            serviceFloor[elevator] = next;
+            // update direction based on selected destination
+            if (next > current) {
+                direction[elevator] = Direction.UP;
+            } else if (next < current) {
+                direction[elevator] = Direction.DOWN;
+            }
+            publishGoTo(elevator, next);
+        }
+    }
+
     // commands elevator to open doors at current floor
     public void serviceAtFloor(int elevator, int floor) {
         if (!validElevator(elevator) || !powered[elevator]) {
@@ -83,6 +184,17 @@ public class Elevators {
                 new int[]{floor}
         );
         bus.publish(id, message);
+    }
+
+    public void completeStop(int elevator) {
+        if (!validElevator(elevator)) {
+            return;
+        }
+        int arrivedFloor = currentFloor[elevator];
+        // remove floor that elevator just reached
+        pendingStops[elevator].remove(arrivedFloor);
+        // publish next destination
+        dispatchNextStop(elevator);
     }
 
     // receive arrival messages from the Elevator Control Board
@@ -116,6 +228,14 @@ public class Elevators {
         return validElevator(elevator) && powered[elevator];
     }
 
+    public boolean isAtStop(int elevator) {
+        if (!validElevator(elevator)) {
+            return false;
+        }
+        return currentFloor[elevator] == serviceFloor[elevator]
+                && pendingStops[elevator].contains(currentFloor[elevator]);
+    }
+
     //updates the elevator's position when movement information is received
     public void updateCurrentFloor(int elevator, int floor) {
         if (!validElevator(elevator)) return;
@@ -123,10 +243,6 @@ public class Elevators {
         if (floor < 1 || floor > Manager.NUM_FLOORS) return;
 
         currentFloor[elevator] = floor;
-
-        if (floor == serviceFloor[elevator]) {
-            direction[elevator] = Direction.STOPPED;
-        }
     }
 
     private boolean validElevator(int elevator) {

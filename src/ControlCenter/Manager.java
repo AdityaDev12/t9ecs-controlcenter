@@ -103,60 +103,41 @@ public class Manager {
 
     // arrival and service implementation
     // assumes SERVICE command initiates opening the door
-    // handles one destination at a time
-    // services the floor, clears the request, sends to pending destination
     private void serviceArrivedElevator(int elevator) {
-        if (!elevators.isPoweredOn(elevator)) {
+        if (!elevators.isAtStop(elevator)) {
             return;
         }
-        int current = elevators.getCurrentFloor(elevator);
-        int destination = elevators.getServiceFloor(elevator);
-        // elevator hasn't reached destination
-        if (current != destination || elevators.getDirection(elevator) != Direction.STOPPED) {
-            return;
-        }
-        boolean hasCabinRequest = false;
-        for (int floor : cabinCalls.getPendingRequests(elevator)) {
-            if (floor == current) {
-                hasCabinRequest = true;
-                break;
+        int floor = elevators.getCurrentFloor(elevator);
+        boolean needsService = false;
+        // check for cabin request at this floor
+        for (int requestedFloor : cabinCalls.getPendingRequests(elevator)) {
+            if (requestedFloor == floor) {
+                 needsService = true;
+                 clearCabinCall(elevator, floor);
+                 break;
             }
         }
-        // check if elevator was assigned a hall request
-        boolean hasFloorRequest = false;
-        for (Map.Entry<String, Integer> entry : assignedFloorCalls.entrySet()) {
-            if (entry.getValue() == elevator) {
-                String[] parts = entry.getKey().split("\\s+");
-                int requestedFloor = Integer.parseInt(parts[0]);
-                if (requestedFloor == current) {
-                    hasFloorRequest = true;
-                    break;
-                }
-            }
-        }
-        if (!hasCabinRequest && !hasFloorRequest) {
-            return;
-        }
-        // open elevator doors
-        elevators.serviceAtFloor(elevator, current);
-        // clear any cabin request at this floor
-        if (hasCabinRequest) {
-            clearCabinCall(elevator, current);
-        }
-        // clear any hall requests assigned to this elevator at this floor
+        // check for hall requests assigned to this elevator
         var iterator = assignedFloorCalls.entrySet().iterator();
         while (iterator.hasNext()) {
-            Map.Entry<String, Integer> entry = iterator.next();
+            var entry = iterator.next();
             if (entry.getValue() == elevator) {
                 String[] parts = entry.getKey().split("\\s+");
                 int requestedFloor = Integer.parseInt(parts[0]);
-                if (requestedFloor == current) {
-                    Direction direction = Direction.valueOf(parts[1]);
-                    clearFloorCall(current, direction);
+                Direction requestedDirection = Direction.valueOf(parts[1]);
+                if (requestedFloor == floor) {
+                    needsService = true;
+                    clearFloorCall(floor, requestedDirection);
                     iterator.remove();
                 }
             }
         }
+        // open doors if there's a request at this floor
+        if (needsService) {
+            elevators.serviceAtFloor(elevator, floor);
+        }
+        // remove this stop and dispatch next
+        elevators.completeStop(elevator);
     }
 
     //cabin calls are always served by the elevator they were made in.
@@ -165,37 +146,10 @@ public class Manager {
         if (!elevators.isPoweredOn(elevator)) {
             return;
         }
-        // don't interrupt an elevator already moving
-        if (elevators.getDirection(elevator) != Direction.STOPPED) {
-            return;
-        }
-
-        int currentFloor = elevators.getCurrentFloor(elevator);
-        int closestFloor = -1;
-        int shortestDistance = Integer.MAX_VALUE;
-
-        // find closest pending cabin request
+        // add every pending cabin request to this elevator's route
         for (int floor : floors) {
-            int distance = Math.abs(floor - currentFloor);
-            if (distance < shortestDistance) {
-                shortestDistance = distance;
-                closestFloor = floor;
-            }
+            elevators.addStop(elevator, floor);
         }
-        // no valid request found
-        if (closestFloor == -1) {
-            return;
-        }
-
-        // if request is on current floor, service immediately
-        if (closestFloor == currentFloor) {
-            elevators.serviceAtFloor(elevator, closestFloor);
-            clearCabinCall(elevator, currentFloor);
-            return;
-        }
-
-        // send elevator to requested floor
-        sendTo(elevator, closestFloor);
     }
 
     // floor panel request; selectElevator picks the elevator.
